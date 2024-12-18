@@ -62,8 +62,12 @@ def test_binding_parameters():
     hndl.execute("insert into simple(key, val) values(@k, @v)", dict(k=3, v=4))
     assert hndl.get_effects()[0] == 1
 
+    hndl.execute("insert into simple(key, val) values(?, ?)", {1: 5, 2: 6})
+    hndl.execute("insert into simple(key, val) values(?, ?)", {2: 8, 1: 7})
+    assert hndl.get_effects()[0] == 1
+
     rows = list(hndl.execute("select key, val from simple order by key"))
-    assert rows == [[1, 2], [3, 4]]
+    assert rows == [[1, 2], [3, 4], [5, 6], [7, 8]]
 
 
 def test_commit_failures():
@@ -301,6 +305,17 @@ def test_parameter_name_in_binding_errors_noexception():
 
     assert exc.value.args[1] == (
         "Can't map complex value (5+6j) for parameter 'param' to a Comdb2 type"
+    )
+
+
+def test_binding_array_by_index():
+    hndl = cdb2.Handle("mattdb", "dev")
+
+    with pytest.raises(Exception) as exc:
+        hndl.execute("select * from carray(?)", {1: [1, 2, 3]})
+
+    assert exc.value.args[0] == (
+        "Cannot bind an array by index"
     )
 
 

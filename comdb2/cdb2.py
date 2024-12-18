@@ -99,6 +99,13 @@ is returned instead, because ``20 <= 25 <= 23`` is false.  In both of these
 examples we make use of the `list` constructor to turn the iterable returned
 by `Handle.execute` into a list of result rows.
 
+You can also bind by index (starting from 1) instead of by name with placeholders specified using ``?``
+in sequence. Note that binding an array by index is not supported. For example:
+
+    >>> query = "select 25 between ? and ?"
+    >>> print(list(hndl.execute(query, {1: 20, 2: 42})))
+    [[1]]
+
 Types
 -----
 
@@ -148,6 +155,7 @@ __all__ = [
     "ColumnType",
     "ConnectionFlags",
     "Value",
+    "IndexParameterValue",
     "ParameterValue",
 ]
 
@@ -160,7 +168,7 @@ Value = Union[
     datetime.datetime,
     DatetimeUs,
 ]
-ParameterValue = Union[
+IndexParameterValue = Union[
     None,
     int,
     float,
@@ -168,6 +176,9 @@ ParameterValue = Union[
     str,
     datetime.datetime,
     DatetimeUs,
+]
+ParameterValue = Union[
+    IndexParameterValue,
     List[int],
     List[float],
     List[bytes],
@@ -359,7 +370,7 @@ class Handle:
     def execute(
         self,
         sql: str | bytes,
-        parameters: Mapping[str, ParameterValue] | None = None,
+        parameters: Mapping[str, ParameterValue] | Mapping[int, IndexParameterValue] | None = None,
         *,
         column_types: Sequence[ColumnType] | None = None,
     ) -> Handle:
@@ -383,6 +394,7 @@ class Handle:
             sql (str): The SQL string to execute.
             parameters (Mapping[str, Any]): An optional mapping from parameter
                 names to the values to be bound for them.
+                (Mapping[int, Any]): Can also map from parameter index starting with 1 (if not array)
             column_types (Sequence[int]): An optional sequence of types (values
                 of the `ColumnType` enumeration) which the columns of the
                 result set will be coerced to.
@@ -400,6 +412,12 @@ class Handle:
         Example:
             >>> for row in hndl.execute("select 1, 2 UNION ALL select @x, @y",
             ...                         {'x': 2, 'y': 4}):
+            ...     print(row)
+            [1, 2]
+            [2, 4]
+
+            >>> for row in hndl.execute("select 1, 2 UNION ALL select ?, ?",
+            ...                         {1: 2, 2: 4}):
             ...     print(row)
             [1, 2]
             [2, 4]
